@@ -26,13 +26,13 @@ class Pod(object):
 
     """
 
-    def __init__(self, name=None, namespace=None, labels=None, roles=None):
+    def __init__(self, name=None, namespace=None, labels=None, roles=[]):
         """Context detail per pod
 
             Args:
                 name (string):      name of the pod in oc cluster
                 namespace (string): namespace in which pod lives
-                labels (list):      list of oc labels associated with pod
+                labels (dict):      list of oc labels associated with pod
                 roles (list):       This could be oc roles like Master, etcd OR
                                    ceph roles like mon, osd etc
 
@@ -40,7 +40,7 @@ class Pod(object):
         self._name = name
         self._namespace = namespace
         self.labels = labels
-        self.roles = roles
+        self._roles = roles
         # TODO: get backend config !!
 
     @property
@@ -50,6 +50,14 @@ class Pod(object):
     @property
     def namespace(self):
         return self._namespace
+
+    @property
+    def roles(self):
+        return self._roles
+
+    @roles.setter
+    def roles(self, role):
+        self._roles.append(role)
 
     def exec_command(self, **kw):
         """ Handles execution of a command on a pod

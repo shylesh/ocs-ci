@@ -11,7 +11,7 @@ class OCP(object):
     with OpenShift
 
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         k8s_client = config.new_client_from_config()
         dyn_client = DynamicClient(k8s_client)
@@ -22,6 +22,12 @@ class OCP(object):
         self.v1_projects = dyn_client.resources.get(
             api_version='project.openshift.io/v1', kind='Project'
         )
+        self.v1_pods = dyn_client.resources.get(
+            api_version='v1', kind='Pod'
+        )
+
+    def get(self, resource, **kwargs):
+        return resource.get(**kwargs)
 
     def get_projects(self):
         """Gets all the projects in the cluster.
