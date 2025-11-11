@@ -50,6 +50,7 @@ class DeploymentFactory(object):
                     # this deployment type is not independent and rely on hub cluster existence and InfraEnv resource
                     # therefore this is just a placeholder here to stick with the factory pattern
                     "vsphere_ai_agent": VSPHEREAgentAI,
+                    "hci_vsphere_ai": VSPHEREAI,
                 }
             )
         elif self.deployment_platform == constants.AZURE_PLATFORM:
