@@ -10071,6 +10071,9 @@ def pytest_sessionfinish(session, exitstatus):
         cluster_load.finish_cluster_load()
     except Exception:
         log.exception("During finishing the Cluster load an exception was hit!")
+    if ocsci_config.RUN.get("enable_log_deduplicator", False):
+        _dedup_filter = getattr(session.config, "_dedup_filter")
+        _dedup_filter.flush_all_keys()
 
 
 @pytest.fixture()

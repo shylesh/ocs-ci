@@ -14,6 +14,7 @@ import shutil
 import pandas as pd
 import pytest
 from junitparser import JUnitXml
+from ocs_ci.utility.log_utility import LogDeduplicator
 import ocs_ci.utility.memory
 from ocs_ci.framework import config as ocsci_config
 from ocs_ci.framework.logger_factory import set_log_record_factory
@@ -470,6 +471,18 @@ def pytest_configure(config):
             check_clusters()
             if ocsci_config.RUN.get("cephcluster"):
                 gather_version_info_for_report(config)
+            if ocsci_config.RUN.get("enable_log_deduplicator", False):
+                _dedup_filter = LogDeduplicator(
+                    name="ConsoleLogDedup",
+                    flush_time_window=10,
+                    emit_count_threshold=30,
+                    max_keys=1000,
+                )
+                # Attach to the root logger
+                logging.getLogger().addFilter(_dedup_filter)
+                # save the dedup object to use it at the end of session
+                config._dedup_filter = _dedup_filter
+
     # switch the configuration context back to the default cluster
     ocsci_config.switch_default_cluster_ctx()
 
