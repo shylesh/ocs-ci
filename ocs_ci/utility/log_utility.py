@@ -12,6 +12,7 @@ from collections import OrderedDict
 from typing import Iterable, Optional
 
 
+log = logging.getLogger(__name__)
 rlogger = logging.getLogger()
 
 
@@ -41,7 +42,7 @@ class LogDeduplicator(logging.Filter):
         log_blacklist: Optional[Iterable[str]] = None,
         bg_flush_interval: Optional[int] = None,
     ):
-        super.__init__(name)
+        super().__init__(name)
         self.flush_time_window = flush_time_window
         self.emit_count_threshold = emit_count_threshold
         self.max_keys = max_keys
@@ -78,7 +79,7 @@ class LogDeduplicator(logging.Filter):
                 return False
         return True
 
-    def emit_log(self, record: logging.LogRecord):
+    def filter(self, record: logging.LogRecord):
         """
         Decide whether to emit a message or not
 
@@ -87,6 +88,7 @@ class LogDeduplicator(logging.Filter):
             False: don't emit
 
         """
+        log.info("Entering filter")
         if record.levelno not in self.log_levels:
             return True
 
@@ -107,11 +109,13 @@ class LogDeduplicator(logging.Filter):
             if entry is None:
                 # first entry for this message so print it once
                 # and check if _kstore has max keys already
+                log.info("Entry doesn't exist, going to create now")
                 if len(self._kstore) > self.max_keys:
                     # pop oldest key and emit its message
                     o_key, o_entry = self._kstore.popitem(last=False)
                     self._emit_summary_for_key_without_lock(o_key, o_entry)
                 self._kstore[key] = [0, now, now, record]
+                log.info(f"Added: {self._kstore[key]} with record {record}")
                 return True
             else:
                 # repeated log
@@ -128,6 +132,7 @@ class LogDeduplicator(logging.Filter):
 
                 # case - flush_time_window threashold reached
                 if now - entry[1] >= self.flush_time_window:
+                    log.info("Flush time window threashold reached")
                     self._emit_summary_for_key_without_lock(key, entry)
                     self._kstore[key] = [0, now, now, record]
                     return True
@@ -191,7 +196,7 @@ class LogDeduplicator(logging.Filter):
             self._bg_thread = th
             th.start()
 
-    def stop_bg_flusther_thread(self, timeout=5):
+    def stop_bg_flusher_thread(self, timeout=5):
         """
         Args:
             timeout (int): Join timeout

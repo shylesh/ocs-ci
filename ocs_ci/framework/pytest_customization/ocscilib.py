@@ -399,6 +399,7 @@ def pytest_configure(config):
         config (pytest.config): Pytest config object
 
     """
+    log.info("Beginning pytest_configure")
     set_log_level(config)
     # Set the new factory for the logging of pytest
     set_log_record_factory()
@@ -407,6 +408,7 @@ def pytest_configure(config):
     ocscilib_module = "ocs_ci.framework.pytest_customization.ocscilib"
     if ocscilib_module not in config.getoption("-p"):
         return
+    log.info("Continuing pytest_configure")
     for i in range(ocsci_config.nclusters):
         log.info(f"Pytest configure switching to: cluster={i}")
         ocsci_config.switch_ctx(i)
@@ -472,6 +474,7 @@ def pytest_configure(config):
             if ocsci_config.RUN.get("cephcluster"):
                 gather_version_info_for_report(config)
             if ocsci_config.RUN.get("enable_log_deduplicator", False):
+                log.warning("ENABLING DEDUP")
                 _dedup_filter = LogDeduplicator(
                     name="ConsoleLogDedup",
                     flush_time_window=10,
@@ -482,6 +485,11 @@ def pytest_configure(config):
                 logging.getLogger().addFilter(_dedup_filter)
                 # save the dedup object to use it at the end of session
                 config._dedup_filter = _dedup_filter
+                for h in list(logging.getLogger().handlers):
+                    if _dedup_filter not in getattr(h, "filters", []):
+                        h.addFilter(_dedup_filter)
+            else:
+                log.warning("DEDUP not enabled")
 
     # switch the configuration context back to the default cluster
     ocsci_config.switch_default_cluster_ctx()
