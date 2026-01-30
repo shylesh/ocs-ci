@@ -8,6 +8,7 @@ import tempfile
 import time
 from datetime import datetime
 
+from ocs_ci.deployment.helpers.hypershift_base import is_hosted_cluster
 from ocs_ci.framework import config
 from ocs_ci.ocs import constants, ocp
 from ocs_ci.ocs.cluster import is_hci_cluster
@@ -1400,10 +1401,12 @@ def get_all_drpolicy():
                 cluster_name.ENV_DATA.get("cluster_name")
             )
     dr_cluster_relations = config.MULTICLUSTER.get("dr_cluster_relations", [])
+    logger.info(f"dr_cluster_relations = {dr_cluster_relations}")
     if dr_cluster_relations:
         current_managed_clusters_list = [
             f"{constants.HYPERSHIFT_ADDON_DISCOVERYPREFIX}-{item}"
             for item in dr_cluster_relations[0]
+            if is_hosted_cluster(cluster_name=item)
         ]
     else:
         current_managed_clusters_list.remove(acm_hub_name)
