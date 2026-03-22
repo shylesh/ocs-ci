@@ -676,6 +676,24 @@ def _build_claude_prompt(failure_info, kubeconfig_entries, ocsci_root, claude_md
         "ai_mcp_server_name", defaults.AI_MCP_SERVER_NAME
     )
 
+    # Load investigation protocol template (Phase 1)
+    protocol_file = os.path.join(
+        os.path.dirname(__file__), "../../templates/claude/investigation_protocol.md"
+    )
+    investigation_protocol = ""
+    if os.path.exists(protocol_file):
+        with open(protocol_file, "r") as f:
+            investigation_protocol = f.read()
+
+    # Load classification guide template (Phase 2)
+    classification_file = os.path.join(
+        os.path.dirname(__file__), "../../templates/claude/classification_guide.md"
+    )
+    classification_guide = ""
+    if os.path.exists(classification_file):
+        with open(classification_file, "r") as f:
+            classification_guide = f.read()
+
     prompt = f"""You are an expert in OpenShift Data Foundation (ODF), OpenShift Container \
 Platform (OCP), and Advanced Cluster Management (ACM) cluster management and analysis, with \
 added expertise in the OCS-CI test framework. You have deep knowledge of Ceph storage, Rook \
@@ -717,6 +735,10 @@ The MCP server provides efficient, indexed access to the OCS-CI codebase with th
 
 Start by using MCP tools to understand the test code and its dependencies before investigating the cluster.
 
+{investigation_protocol}
+
+{classification_guide}
+
 ## IMPORTANT CONSTRAINTS
 - You MUST NOT modify, delete, or create any cluster resources
 - You MUST NOT run any commands that alter cluster state (no apply, delete, patch, create, edit)
@@ -757,69 +779,58 @@ The failing test source file is: {test_file_path if test_file_path else "unknown
 DO NOT attempt to read files directly or use @-context syntax. The MCP server provides \
 efficient, indexed access to the entire codebase.
 
-## Investigation Tasks
-Please perform the following investigation steps:
+## Required Output Format
 
-1. **Read the test log** (if available) to understand the sequence of events
-2. **Check cluster health**:
-   - ODF/OCS operator status and CSV phase
-   - StorageCluster status and conditions
-   - Ceph cluster health (via rook-ceph toolbox if available)
-   - All pods in openshift-storage namespace (crashlooping, pending, or failed pods)
-3. **Check recent events** in openshift-storage namespace for warnings/errors
-4. **Check relevant resources** based on the test name and failure:
-   - If storage-related: PVCs, PVs, StorageClasses
-   - If pod-related: pod logs, describe output
-   - If operator-related: operator logs, CSV status
-5. **Check node status**: Are all nodes Ready? Any resource pressure?
-6. **Correlate findings** with the test failure message
-
-## Output Format
-Generate a structured AI Analysis Summary with the following sections:
+You MUST provide your analysis in this exact structure:
 
 ### AI Analysis Summary - {test_short_name}
 
 **Test**: {test_name}
 **Analysis Timestamp**: <current timestamp>
 
-#### 1. Failure Root Cause Analysis
-<Most likely root cause based on evidence>
+#### 1. Pre-Analysis Classification
+**Failure Type**: [A/B/C/D from classification guide above]
+**Initial Confidence**: [High/Medium/Low]
+**Reasoning**: [Why this classification - 1-2 sentences]
 
-#### 2. Cluster State at Time of Failure
-<Key observations about cluster health>
+#### 2. Evidence Gathered (Investigation Protocol)
+List each command you ran and key findings:
+- **Step 1 - Pytest Failure**: [Exact traceback, assertion, line number]
+- **Step 2 - Test Code Analysis**: [What MCP tools revealed about test expectations]
+- **Step 3 - Affected Resources**: [Service/pod/namespace identified]
+- **Step 4 - Pod State**: Command: `oc get pods -n <namespace>` | Finding: [actual output]
+- **Step 5 - Pod Details**: Command: `oc describe pod <pod>` | Finding: [events, status]
+- **Step 6 - Pod Logs**: Command: `oc logs <pod>` | Finding: [key log messages]
+- **Step 7 - Dependencies**: [Upstream services checked and their state]
+- **Step 8 - Cluster Events**: Command: `oc get events` | Finding: [relevant events]
 
-#### 3. Evidence Found
-<Specific logs, events, resource states that support the analysis>
+**Not Checked**: [Explicitly list any resources you did NOT verify]
 
-#### 4. Contributing Factors
-<Any secondary issues or environmental factors>
+#### 3. Primary Hypothesis
+[Your main explanation for the failure based on evidence above]
 
-#### 5. Issue Category
-Classify this failure into exactly ONE of the following categories and explain why:
+#### 4. Falsification Check
+**Test Command**: [One command that would DISPROVE your hypothesis]
+**Result**: [What you found when you ran it]
+**Hypothesis Status**: [Confirmed/Rejected/Uncertain]
 
-- **PRODUCT_BUG** — The failure is caused by a defect in an ODF/OCP/ACM component
-  (e.g. operator crash, Ceph regression, CSI driver bug, API error from the platform).
-- **FRAMEWORK_ISSUE** — The failure is caused by a problem in the OCS-CI test framework
-  itself (e.g. incorrect assertion, flawed fixture, wrong timeout, test logic error,
-  missing cleanup, incorrect resource name/label used by the test code).
-- **INFRASTRUCTURE_ISSUE** — The failure is caused by the underlying infrastructure,
-  neither the product nor the framework (e.g. node not ready, network instability,
-  resource exhaustion on the test runner, DNS failure, cloud provider issue).
+#### 5. Root Cause Analysis
+[Final conclusion based on all evidence - be specific and reference evidence]
 
-Format this section as:
-**Category**: <PRODUCT_BUG | FRAMEWORK_ISSUE | INFRASTRUCTURE_ISSUE>
-**Reason**: <one or two sentences explaining why this category was chosen>
+#### 6. Issue Category (Final Classification)
+**Category**: [PRODUCT_BUG | FRAMEWORK_ISSUE | INFRASTRUCTURE_ISSUE]
+**Reason**: [Why this category, referencing specific evidence from investigation]
+**Classification Change**: [If different from initial classification in step 1, explain why]
 
-#### 6. Recommended Actions
-<Steps to investigate further or remediate, tailored to the category above>
+#### 7. Confidence & Evidence Gaps
+**Final Confidence**: [High/Medium/Low]
+**Evidence Gaps**: [What you could not verify or check]
+**What Would Increase Confidence**: [Specific additional checks needed]
 
-#### 7. Confidence Level
-Rate your overall confidence in this analysis:
-**Confidence**: <High | Medium | Low>
-**Justification**: <brief explanation — e.g. "clear stack trace pointing to operator",
-  or "limited log data available, cluster state ambiguous">
+#### 8. Recommended Actions
+[Specific, actionable next steps tailored to the category above]
 
-Output ONLY the summary report text. Do not include any preamble or meta-commentary.
+**IMPORTANT**: Output ONLY the summary report text. Do not include any preamble or meta-commentary.
 """
     return prompt
 
