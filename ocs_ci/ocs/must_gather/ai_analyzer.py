@@ -914,7 +914,8 @@ def _parse_confidence_from_summary(summary_content):
     """
     Parse the confidence level from Claude's summary output.
 
-    Looks for the line: **Confidence**: <High | Medium | Low>
+    Looks for the line: **Final Confidence**: <High | Medium | Low>
+    Also supports legacy format: **Confidence**: <High | Medium | Low>
 
     Args:
         summary_content (str): The full AI summary text.
@@ -922,6 +923,16 @@ def _parse_confidence_from_summary(summary_content):
     Returns:
         str: One of "High", "Medium", "Low", or "Unknown".
     """
+    # Try new format first (Final Confidence)
+    pattern = re.compile(
+        r"\*\*Final Confidence\*\*\s*:\s*(High|Medium|Low)",
+        re.IGNORECASE,
+    )
+    m = pattern.search(summary_content)
+    if m:
+        return m.group(1).capitalize()
+
+    # Fall back to legacy format (Confidence)
     pattern = re.compile(
         r"\*\*Confidence\*\*\s*:\s*(High|Medium|Low)",
         re.IGNORECASE,
@@ -929,6 +940,7 @@ def _parse_confidence_from_summary(summary_content):
     m = pattern.search(summary_content)
     if m:
         return m.group(1).capitalize()
+
     return "Unknown"
 
 
@@ -2109,8 +2121,11 @@ def trigger_ai_analysis_parallel(failure_info):
             "AI analysis will have limited cluster access"
         )
 
-    # Determine the test log directory
-    test_log_dir = _find_test_log_dir(test_short_name)
+    # Write AI summary to pytest logs directory (ocs-ci-logs-{run_id})
+    # instead of must-gather directory for better organization
+    log_dir = os.path.expanduser(config.RUN.get("log_dir", "/tmp"))
+    run_id = config.RUN.get("run_id", "unknown")
+    test_log_dir = os.path.join(log_dir, f"ocs-ci-logs-{run_id}")
     logger.info(f"AI analysis summary will be written to: {test_log_dir}")
 
     # Container to receive the result from the thread (shared via closure)
