@@ -2629,6 +2629,12 @@ class Deployment(object):
             run_cmd(cmd=cmd)
             logger.info("Sleeping for 60 Sec for Background Activity")
             time.sleep(60)
+            addon_deployment_config = OCP(
+                kind=constants.ADDONDEPLOYMENTCONFIG,
+                namespace=constants.MCE_NAMESPACE,
+                resource_name=constants.ADDONDEPLOYMENTCONFIG_HYPERSHIFT_ADDON_DEPLOY_CONFIG,
+            )
+            existing_spec = addon_deployment_config.get()
             for pod_label in [
                 "open-cluster-management.io/addon=cluster-proxy",
                 "component=work-manager",
