@@ -1,7 +1,0 @@
----
-# This config file enables DR workload deployment at pytest session start.
-# It is intended for DR upgrade pipelines only, where workloads need to be
-# running across the entire session (before, during, and after upgrade).
-# Pass this file via --ocsci-conf only for the upgrade run-ci action.
-UPGRADE:
-  deploy_dr_workload_at_session_start: true
